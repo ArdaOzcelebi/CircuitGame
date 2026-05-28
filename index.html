@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CircuitGame</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand__title">CircuitGame</div>
+        <div class="brand__subtitle">Phase 3: schematic rendering + current animation</div>
+      </div>
+      <div class="controls">
+        <button id="newCircuitBtn" class="btn">Generate New Circuit</button>
+        <label class="field">
+          <span class="field__label">Seed</span>
+          <input id="seedInput" class="field__input" placeholder="optional" />
+        </label>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="panel">
+        <canvas id="schematic" width="1000" height="650"></canvas>
+      </section>
+      <section class="panel side">
+        <div class="card">
+          <div class="card__title">Circuit Info</div>
+          <pre id="info" class="mono"></pre>
+        </div>
+        <div class="card">
+          <div class="card__title">Legend</div>
+          <div class="legend mono">
+            <div><span class="swatch swatch--wire"></span> wires</div>
+            <div><span class="swatch swatch--current"></span> current flow</div>
+            <div>R: resistor, V: voltage source, I: current source</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>
+
