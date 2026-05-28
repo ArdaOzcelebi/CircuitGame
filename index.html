@@ -10,7 +10,7 @@
     <header class="topbar">
       <div class="brand">
         <div class="brand__title">CircuitGame</div>
-        <div class="brand__subtitle">Phase 3: schematic rendering + current animation</div>
+        <div class="brand__subtitle">Phase 4: multimeter probes + measurements</div>
       </div>
       <div class="controls">
         <button id="newCircuitBtn" class="btn">Generate New Circuit</button>
@@ -23,9 +23,25 @@
 
     <main class="main">
       <section class="panel">
-        <canvas id="schematic" width="1000" height="650"></canvas>
+        <div class="schematicWrap">
+          <canvas id="schematic" width="1000" height="650"></canvas>
+          <canvas id="schematicOverlay" width="1000" height="650"></canvas>
+        </div>
       </section>
       <section class="panel side">
+        <div class="card">
+          <div class="card__title">Multimeter</div>
+          <div class="meter__modes">
+            <button id="modeV" class="modeBtn" aria-pressed="true">V</button>
+            <button id="modeA" class="modeBtn" aria-pressed="false">A</button>
+            <button id="modeR" class="modeBtn" aria-pressed="false">Ω</button>
+          </div>
+          <div id="meterReadout" class="meter__readout mono">--</div>
+          <div id="meterDetail" class="meter__detail mono"></div>
+          <div class="meter__hint mono">
+            Drag probes onto nodes. In A mode, drag the red probe onto a branch.
+          </div>
+        </div>
         <div class="card">
           <div class="card__title">Circuit Info</div>
           <pre id="info" class="mono"></pre>
@@ -44,4 +60,3 @@
     <script type="module" src="./src/app.js"></script>
   </body>
 </html>
-

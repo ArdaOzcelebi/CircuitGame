@@ -275,11 +275,11 @@ export function createCircuitRenderer(canvas, options = {}) {
     canvas.width = width;
     canvas.height = height;
 
-    const layout = layoutNetlist(netlist, { width, height, ...layoutOptions });
+    const { layout: providedLayout, ...otherLayoutOptions } = layoutOptions;
+    const layout = providedLayout ?? layoutNetlist(netlist, { width, height, ...otherLayoutOptions });
     state = { layout, solution };
     animationHandle = requestAnimationFrame(drawFrame);
   }
 
   return { render, stop };
 }
-
