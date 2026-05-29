@@ -8,10 +8,10 @@
   </head>
   <body>
     <header class="topbar">
-      <div class="brand">
-        <div class="brand__title">CircuitGame</div>
-        <div class="brand__subtitle">Phase 4: multimeter probes + measurements</div>
-      </div>
+        <div class="brand">
+          <div class="brand__title">CircuitGame</div>
+          <div class="brand__subtitle">Phase 5: quiz + scoring</div>
+        </div>
       <div class="controls">
         <button id="newCircuitBtn" class="btn">Generate New Circuit</button>
         <label class="field">
@@ -41,6 +41,21 @@
           <div class="meter__hint mono">
             Drag probes onto nodes. In A mode, drag the red probe onto a branch.
           </div>
+        </div>
+        <div class="card">
+          <div class="card__title">Quiz</div>
+          <div id="quizStatus" class="mono quiz__status"></div>
+          <div id="quizPrompt" class="quiz__prompt"></div>
+          <div class="quiz__row">
+            <input id="quizAnswer" class="quiz__input mono" type="number" step="any" placeholder="answer" />
+            <button id="quizSubmit" class="btn btn--small">Submit</button>
+          </div>
+          <div class="quiz__row">
+            <button id="quizNext" class="btn btn--small" disabled>Next</button>
+            <button id="newQuizBtn" class="btn btn--small">New Quiz</button>
+          </div>
+          <div id="quizFeedback" class="quiz__feedback mono"></div>
+          <div id="quizScore" class="quiz__score mono"></div>
         </div>
         <div class="card">
           <div class="card__title">Circuit Info</div>

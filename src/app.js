@@ -2,6 +2,7 @@ import { generateCircuit } from './engine/generator.js';
 import { createCircuitRenderer } from './render/renderer.js';
 import { layoutNetlist } from './render/layout.js';
 import { createMultimeterController } from './ui/multimeter.js';
+import { createQuizController } from './ui/quiz.js';
 
 const canvas = document.getElementById('schematic');
 const overlay = document.getElementById('schematicOverlay');
@@ -13,6 +14,14 @@ const meterDetail = document.getElementById('meterDetail');
 const modeV = document.getElementById('modeV');
 const modeA = document.getElementById('modeA');
 const modeR = document.getElementById('modeR');
+const quizStatus = document.getElementById('quizStatus');
+const quizPrompt = document.getElementById('quizPrompt');
+const quizAnswer = document.getElementById('quizAnswer');
+const quizSubmit = document.getElementById('quizSubmit');
+const quizNext = document.getElementById('quizNext');
+const newQuizBtn = document.getElementById('newQuizBtn');
+const quizFeedback = document.getElementById('quizFeedback');
+const quizScore = document.getElementById('quizScore');
 
 if (!(canvas instanceof HTMLCanvasElement)) {
   throw new Error('Missing <canvas id="schematic">');
@@ -27,6 +36,17 @@ const multimeter = createMultimeterController({
   readoutEl: meterReadout,
   detailEl: meterDetail,
   modeButtons: { V: modeV, A: modeA, R: modeR },
+});
+
+const quiz = createQuizController({
+  statusEl: quizStatus,
+  promptEl: quizPrompt,
+  answerInputEl: quizAnswer,
+  submitBtnEl: quizSubmit,
+  nextBtnEl: quizNext,
+  newQuizBtnEl: newQuizBtn,
+  feedbackEl: quizFeedback,
+  scoreEl: quizScore,
 });
 
 function formatMeta(meta) {
@@ -52,6 +72,7 @@ function renderNewCircuit() {
   overlay.height = height;
   renderer.render(netlist, solution, { width, height, layout });
   multimeter.setCircuit({ layout, netlist, solution });
+  quiz.setCircuit({ netlist, solution, seed: seed ?? `${Date.now()}` });
 }
 
 newCircuitBtn?.addEventListener('click', () => renderNewCircuit());
