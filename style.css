@@ -100,6 +100,11 @@ body {
   width: 160px;
 }
 
+select.field__input {
+  width: 140px;
+  cursor: pointer;
+}
+
 .main {
   display: grid;
   grid-template-columns: 1fr 320px;
@@ -233,6 +238,68 @@ canvas {
   color: rgba(199, 210, 254, 0.75);
 }
 
+.view__toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: rgba(199, 210, 254, 0.85);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.check input {
+  width: 16px;
+  height: 16px;
+}
+
+.view__help {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.manual {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.manual__section + .manual__section {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(199, 210, 254, 0.12);
+}
+
+.manual__heading {
+  color: rgba(199, 210, 254, 0.9);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.manual__empty {
+  color: var(--muted);
+}
+
+.manual__list {
+  margin: 0 0 0 18px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.manual__itemTitle {
+  color: #f9fafb;
+  font-weight: 600;
+}
+
+.manual__itemBody {
+  color: var(--muted);
+}
+
 .quiz__status {
   color: var(--muted);
   margin: 0 0 6px;
@@ -250,6 +317,16 @@ canvas {
   grid-template-columns: 1fr auto;
   gap: 8px;
   margin-bottom: 8px;
+}
+
+.quiz__row--triple {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.quiz__hint {
+  color: rgba(199, 210, 254, 0.85);
+  margin: 2px 0 10px;
+  min-height: 16px;
 }
 
 .quiz__input {

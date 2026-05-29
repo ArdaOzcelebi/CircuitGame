@@ -62,6 +62,13 @@ function componentDirectionText(component) {
   if (component.type === 'resistor') return `positive from ${component.nodeA} to ${component.nodeB}`;
   if (component.type === 'currentSource') return `positive from ${component.fromNode} to ${component.toNode}`;
   if (component.type === 'voltageSource') return `positive from ${component.positiveNode} to ${component.negativeNode}`;
+  if (component.type === 'diode') return `positive from ${component.anodeNode} to ${component.cathodeNode}`;
+  if (component.type === 'zenerDiode') return `positive from ${component.anodeNode} to ${component.cathodeNode}`;
+  if (component.type === 'idealOpAmp') return `positive from ${component.outputNode} to ${component.referenceNode}`;
+  if (component.type === 'bjtNpn' || component.type === 'bjtPnp')
+    return `positive from ${component.collectorNode} to ${component.emitterNode}`;
+  if (component.type === 'mosfetN' || component.type === 'mosfetP')
+    return `positive from ${component.drainNode} to ${component.sourceNode}`;
   return '';
 }
 
@@ -69,6 +76,11 @@ function componentTerminals(component) {
   if (component.type === 'resistor') return { a: component.nodeA, b: component.nodeB };
   if (component.type === 'currentSource') return { a: component.fromNode, b: component.toNode };
   if (component.type === 'voltageSource') return { a: component.positiveNode, b: component.negativeNode };
+  if (component.type === 'diode') return { a: component.anodeNode, b: component.cathodeNode };
+  if (component.type === 'zenerDiode') return { a: component.anodeNode, b: component.cathodeNode };
+  if (component.type === 'idealOpAmp') return { a: component.outputNode, b: component.referenceNode };
+  if (component.type === 'bjtNpn' || component.type === 'bjtPnp') return { a: component.collectorNode, b: component.emitterNode };
+  if (component.type === 'mosfetN' || component.type === 'mosfetP') return { a: component.drainNode, b: component.sourceNode };
   return null;
 }
 
@@ -157,7 +169,9 @@ function makeResistanceQuestion({ rng, netlist, seed, index }) {
 }
 
 function makeVoltageDropQuestion({ rng, netlist, solution, seed, index }) {
-  const components = netlist.components.filter((c) => c.type === 'resistor' || c.type === 'voltageSource');
+  const components = netlist.components.filter(
+    (c) => c.type === 'resistor' || c.type === 'voltageSource' || c.type === 'diode' || c.type === 'zenerDiode',
+  );
   if (components.length === 0) return null;
 
   for (let attempt = 0; attempt < 40; attempt += 1) {
@@ -218,7 +232,7 @@ function netlistWithOtherSourcesPoweredOff(netlist, { excludeVoltageSourceId } =
     } else if (component.type === 'currentSource') {
       // Powered off => open circuit (remove).
     } else {
-      throw new Error(`Unknown component type: ${component.type}`);
+      // Non-linear and controlled elements are removed for resistance-style questions.
     }
   }
   return off;

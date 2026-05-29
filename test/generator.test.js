@@ -41,3 +41,31 @@ test('generateCircuit is deterministic for the same seed', () => {
   assert.deepEqual(a.solution.branchCurrents, b.solution.branchCurrents);
 });
 
+test('generateCircuit supports difficulty=easy (linear only)', () => {
+  const { netlist, solution, meta } = generateCircuit({ seed: 'diff-easy', difficulty: 'easy' });
+
+  assert.equal(meta.difficulty, 'easy');
+  assert.ok(meta.loopCount >= 1 && meta.loopCount <= 2);
+  assert.ok(Object.values(solution.nodeVoltages).every((v) => Number.isFinite(v)));
+  assert.ok(netlist.components.every((c) => ['resistor', 'voltageSource', 'currentSource'].includes(c.type)));
+});
+
+test('generateCircuit supports difficulty=medium (introduces non-linear components)', () => {
+  const { netlist, solution, meta } = generateCircuit({ seed: 'diff-medium', difficulty: 'medium' });
+
+  assert.equal(meta.difficulty, 'medium');
+  assert.ok(meta.loopCount >= 2 && meta.loopCount <= 3);
+  assert.ok(Object.values(solution.nodeVoltages).every((v) => Number.isFinite(v)));
+
+  assert.ok(
+    netlist.components.some((c) => ['diode', 'zenerDiode', 'bjtNpn', 'bjtPnp', 'mosfetN', 'mosfetP'].includes(c.type)),
+  );
+});
+
+test('generateCircuit supports difficulty=hard (includes ideal op-amp)', () => {
+  const { netlist, solution, meta } = generateCircuit({ seed: 'diff-hard', difficulty: 'hard' });
+
+  assert.equal(meta.difficulty, 'hard');
+  assert.ok(Object.values(solution.nodeVoltages).every((v) => Number.isFinite(v)));
+  assert.ok(netlist.components.some((c) => c.type === 'idealOpAmp'));
+});
