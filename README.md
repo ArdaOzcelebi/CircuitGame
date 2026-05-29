@@ -6,7 +6,7 @@ A random circuit generator. Do your measurements to learn electronic circuits.
 - ✅ Phase 2: Procedural random (solvable) circuit generator
 - ✅ Phase 3: Canvas schematic renderer + current-flow animation (basic)
 - ✅ Phase 4: Multimeter UI + draggable probes (V/A/Ω)
-- ⏳ Phase 5: Game loop / quiz is pending
+- ✅ Phase 5: Game loop / quiz + scoring
 
 ## Development
 - Run tests: `npm test`
@@ -16,6 +16,12 @@ A random circuit generator. Do your measurements to learn electronic circuits.
 - `V`: drag probes onto two nodes to read `V_red − V_black`
 - `A`: drag the red probe onto a branch to read that branch current (conventional direction per component definition)
 - `Ω`: drag probes onto two nodes to read Thevenin equivalent resistance (sources powered off)
+
+## Quiz (Phase 5)
+- Use the quiz card to answer measurement questions about the current circuit.
+- Enter a numeric answer in the unit shown and press Submit (or Enter).
+- After submitting, press Next (or Enter again) to advance.
+- Use "New Quiz" to regenerate questions for the same circuit (score resets).
 
 ## Engine modules
 - Solver: `src/engine/circuit.js` (`Netlist`, `solveMNA`)
