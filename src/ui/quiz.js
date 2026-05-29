@@ -43,6 +43,7 @@ export function createQuizController({
   newQuizBtnEl,
   feedbackEl,
   scoreEl,
+  solutionsEl,
   questionCount = 5,
 } = {}) {
   const state = {
@@ -58,6 +59,28 @@ export function createQuizController({
   function updateText(el, text) {
     if (!el) return;
     el.textContent = text;
+  }
+
+  function answerSigned(question) {
+    if (!question) return false;
+    if (question.unit === 'V') return true;
+    if (question.unit === 'A') return true;
+    return false;
+  }
+
+  function renderSolutions() {
+    if (!(solutionsEl instanceof HTMLElement)) return;
+
+    const items = [];
+    for (const q of state.questions) {
+      const li = document.createElement('li');
+      const answerText = formatSI(q.answer, q.unit, { signed: answerSigned(q) });
+      const tolText = formatSI(q.tolerance, q.unit, { signed: false });
+      li.textContent = `${q.prompt}  →  ${answerText} (±${tolText})`;
+      items.push(li);
+    }
+
+    solutionsEl.replaceChildren(...items);
   }
 
   function setButtons({ canSubmit, canNext }) {
@@ -110,6 +133,7 @@ export function createQuizController({
     state.index = 0;
     state.correct = 0;
     state.submittedCurrent = false;
+    renderSolutions();
     render();
   }
 
@@ -178,4 +202,3 @@ export function createQuizController({
 
   return { setCircuit, resetQuiz };
 }
-

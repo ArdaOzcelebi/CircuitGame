@@ -22,6 +22,7 @@ const quizNext = document.getElementById('quizNext');
 const newQuizBtn = document.getElementById('newQuizBtn');
 const quizFeedback = document.getElementById('quizFeedback');
 const quizScore = document.getElementById('quizScore');
+const quizSolutions = document.getElementById('quizSolutions');
 
 if (!(canvas instanceof HTMLCanvasElement)) {
   throw new Error('Missing <canvas id="schematic">');
@@ -47,6 +48,7 @@ const quiz = createQuizController({
   newQuizBtnEl: newQuizBtn,
   feedbackEl: quizFeedback,
   scoreEl: quizScore,
+  solutionsEl: quizSolutions,
 });
 
 function formatMeta(meta) {

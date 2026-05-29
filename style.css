@@ -271,6 +271,27 @@ canvas {
   margin: 0;
 }
 
+.quiz__solutions {
+  margin-top: 8px;
+  border-top: 1px solid rgba(199, 210, 254, 0.12);
+  padding-top: 8px;
+}
+
+.quiz__solutionsSummary {
+  cursor: pointer;
+  color: rgba(199, 210, 254, 0.85);
+  user-select: none;
+}
+
+.quiz__solutionsList {
+  margin: 8px 0 0 18px;
+  padding: 0;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 @media (max-width: 980px) {
   .main {
     grid-template-columns: 1fr;

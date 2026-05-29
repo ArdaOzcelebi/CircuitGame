@@ -22,6 +22,7 @@ A random circuit generator. Do your measurements to learn electronic circuits.
 - Enter a numeric answer in the unit shown and press Submit (or Enter).
 - After submitting, press Next (or Enter again) to advance.
 - Use "New Quiz" to regenerate questions for the same circuit (score resets).
+- Expand "Solutions" to view the exact answers and tolerances for the current quiz.
 
 ## Engine modules
 - Solver: `src/engine/circuit.js` (`Netlist`, `solveMNA`)
