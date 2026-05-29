@@ -15,6 +15,16 @@ function clientToCanvas(canvas, clientX, clientY) {
   };
 }
 
+function canvasToWorld(view, point) {
+  const scale = view?.scale ?? 1;
+  const offsetX = view?.offsetX ?? 0;
+  const offsetY = view?.offsetY ?? 0;
+  return {
+    x: (point.x - offsetX) / scale,
+    y: (point.y - offsetY) / scale,
+  };
+}
+
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
@@ -73,21 +83,27 @@ function probeRadius() {
   return 16;
 }
 
-function isNearProbe(probe, point) {
-  const dx = probe.x - point.x;
-  const dy = probe.y - point.y;
-  return Math.hypot(dx, dy) <= probeRadius() + 6;
+function probeRadiusWorld(view) {
+  const scale = view?.scale ?? 1;
+  return probeRadius() / Math.max(0.1, scale);
 }
 
-function drawProbe(ctx, probe, { fill, stroke, label }) {
+function isNearProbe(view, probe, point) {
+  const dx = probe.x - point.x;
+  const dy = probe.y - point.y;
+  return Math.hypot(dx, dy) <= probeRadiusWorld(view) + 6 / Math.max(0.1, view?.scale ?? 1);
+}
+
+function drawProbe(ctx, view, probe, { fill, stroke, label, alpha = 1 } = {}) {
   ctx.save();
+  ctx.globalAlpha = alpha;
   ctx.shadowColor = fill;
   ctx.shadowBlur = 10;
   ctx.fillStyle = fill;
   ctx.strokeStyle = stroke;
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.arc(probe.x, probe.y, probeRadius(), 0, Math.PI * 2);
+  ctx.arc(probe.x, probe.y, probeRadiusWorld(view), 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
@@ -152,6 +168,8 @@ export function createMultimeterController({
   readoutEl,
   detailEl,
   modeButtons = {},
+  viewport = { scale: 1, offsetX: 0, offsetY: 0 },
+  onViewportChange = null,
 } = {}) {
   if (!(overlayCanvas instanceof HTMLCanvasElement)) {
     throw new Error('overlayCanvas must be a canvas element');
@@ -168,6 +186,9 @@ export function createMultimeterController({
       red: { x: 60, y: 60, target: null },
       black: { x: 80, y: 120, target: null },
     },
+    ghost: null,
+    view: { ...viewport },
+    pan: null,
     dragging: null,
     hoverComponentId: null,
   };
@@ -199,16 +220,18 @@ export function createMultimeterController({
     state.solution = solution;
     state.hoverComponentId = null;
     state.probes = defaultProbeTargets(layout, netlist);
+    state.ghost = null;
   }
 
-  function snapProbe(probe) {
+  function snapProbe(probe, { snapScreenPx = 22 } = {}) {
     if (!state.layout || !state.netlist) return;
 
     const point = { x: probe.x, y: probe.y };
-    const nodeHit = nearestNode(state.layout, point, 22);
+    const snapWorld = snapScreenPx / Math.max(0.1, state.view.scale);
+    const nodeHit = nearestNode(state.layout, point, snapWorld);
 
     if (state.mode === MODE.A) {
-      const componentHit = nearestComponent(state.layout, point, 16);
+      const componentHit = nearestComponent(state.layout, point, 16 / Math.max(0.1, state.view.scale));
       if (componentHit) {
         const mid = componentMidpoint(state.layout, componentHit.component.id);
         if (mid) {
@@ -230,18 +253,23 @@ export function createMultimeterController({
     probe.target = null;
   }
 
+  function magneticSnapProbe(probe) {
+    snapProbe(probe, { snapScreenPx: 14 });
+  }
+
   function currentHoveredComponent(point) {
     if (state.mode !== MODE.A || !state.layout) return null;
-    const hit = nearestComponent(state.layout, point, 14);
+    const hit = nearestComponent(state.layout, point, 14 / Math.max(0.1, state.view.scale));
     return hit?.component?.id ?? null;
   }
 
   function onPointerDown(event) {
     if (!state.layout) return;
-    const point = clientToCanvas(overlayCanvas, event.clientX, event.clientY);
+    const canvasPoint = clientToCanvas(overlayCanvas, event.clientX, event.clientY);
+    const point = canvasToWorld(state.view, canvasPoint);
 
-    const redNear = isNearProbe(state.probes.red, point);
-    const blackNear = isNearProbe(state.probes.black, point);
+    const redNear = isNearProbe(state.view, state.probes.red, point);
+    const blackNear = isNearProbe(state.view, state.probes.black, point);
 
     if (redNear && blackNear) {
       state.dragging = 'red';
@@ -250,7 +278,8 @@ export function createMultimeterController({
     } else if (blackNear) {
       state.dragging = 'black';
     } else {
-      state.dragging = null;
+      state.dragging = 'pan';
+      state.pan = { startCanvas: canvasPoint, startView: { ...state.view } };
     }
 
     if (state.dragging) {
@@ -260,13 +289,24 @@ export function createMultimeterController({
   }
 
   function onPointerMove(event) {
-    const point = clientToCanvas(overlayCanvas, event.clientX, event.clientY);
+    const canvasPoint = clientToCanvas(overlayCanvas, event.clientX, event.clientY);
+    const point = canvasToWorld(state.view, canvasPoint);
 
     if (state.dragging === 'red' || state.dragging === 'black') {
       const probe = state.dragging === 'red' ? state.probes.red : state.probes.black;
-      probe.x = clamp(point.x, 0, overlayCanvas.width);
-      probe.y = clamp(point.y, 0, overlayCanvas.height);
+      probe.x = clamp(point.x, 0, state.layout?.width ?? overlayCanvas.width);
+      probe.y = clamp(point.y, 0, state.layout?.height ?? overlayCanvas.height);
       probe.target = null;
+      magneticSnapProbe(probe);
+      return;
+    }
+
+    if (state.dragging === 'pan' && state.pan) {
+      const dx = canvasPoint.x - state.pan.startCanvas.x;
+      const dy = canvasPoint.y - state.pan.startCanvas.y;
+      state.view.offsetX = state.pan.startView.offsetX + dx;
+      state.view.offsetY = state.pan.startView.offsetY + dy;
+      onViewportChange?.({ ...state.view });
       return;
     }
 
@@ -278,10 +318,12 @@ export function createMultimeterController({
       const probe = state.dragging === 'red' ? state.probes.red : state.probes.black;
       snapProbe(probe);
       state.dragging = null;
+      state.pan = null;
       overlayCanvas.releasePointerCapture(event.pointerId);
       return;
     }
     state.dragging = null;
+    state.pan = null;
   }
 
   function targetPointForProbe(probe) {
@@ -309,7 +351,9 @@ export function createMultimeterController({
   }
 
   function draw() {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+    ctx.setTransform(state.view.scale, 0, 0, state.view.scale, state.view.offsetX, state.view.offsetY);
 
     if (state.mode === MODE.A) {
       const pinned = state.probes.red.target?.kind === 'component' ? state.probes.red.target.id : null;
@@ -326,8 +370,13 @@ export function createMultimeterController({
     drawTargetLink(ctx, state.probes.red, redTarget, '#ff4dff');
     drawTargetLink(ctx, state.probes.black, blackTarget, '#9ca3af');
 
-    drawProbe(ctx, state.probes.black, { fill: '#e5e7eb', stroke: '#111827', label: 'B' });
-    drawProbe(ctx, state.probes.red, { fill: '#ff4dff', stroke: '#2f0a2f', label: 'R' });
+    if (state.ghost) {
+      drawProbe(ctx, state.view, state.ghost.black, { fill: '#e5e7eb', stroke: '#111827', label: 'B', alpha: 0.25 });
+      drawProbe(ctx, state.view, state.ghost.red, { fill: '#ff4dff', stroke: '#2f0a2f', label: 'R', alpha: 0.25 });
+    }
+
+    drawProbe(ctx, state.view, state.probes.black, { fill: '#e5e7eb', stroke: '#111827', label: 'B' });
+    drawProbe(ctx, state.view, state.probes.red, { fill: '#ff4dff', stroke: '#2f0a2f', label: 'R' });
 
     const { value, detail } = measurementText(state);
     if (readoutEl) readoutEl.textContent = value;
@@ -336,16 +385,59 @@ export function createMultimeterController({
     requestAnimationFrame(draw);
   }
 
+  function onWheel(event) {
+    if (!state.layout) return;
+    event.preventDefault();
+
+    const canvasPoint = clientToCanvas(overlayCanvas, event.clientX, event.clientY);
+    const worldPoint = canvasToWorld(state.view, canvasPoint);
+
+    const zoomIn = event.deltaY < 0;
+    const factor = zoomIn ? 1.12 : 1 / 1.12;
+    const nextScale = clamp(state.view.scale * factor, 0.5, 3.0);
+
+    state.view.scale = nextScale;
+    state.view.offsetX = canvasPoint.x - worldPoint.x * nextScale;
+    state.view.offsetY = canvasPoint.y - worldPoint.y * nextScale;
+    onViewportChange?.({ ...state.view });
+  }
+
+  function resetProbes() {
+    if (!state.layout || !state.netlist) return;
+    state.ghost = {
+      red: { ...state.probes.red },
+      black: { ...state.probes.black },
+    };
+    state.probes = defaultProbeTargets(state.layout, state.netlist);
+  }
+
+  function onKeyDown(event) {
+    const tag = event.target instanceof HTMLElement ? event.target.tagName : '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if (event.key.toLowerCase() === 'r') {
+      resetProbes();
+    }
+  }
+
   overlayCanvas.addEventListener('pointerdown', onPointerDown);
   overlayCanvas.addEventListener('pointermove', onPointerMove);
   overlayCanvas.addEventListener('pointerup', onPointerUp);
   overlayCanvas.addEventListener('pointercancel', () => {
     state.dragging = null;
+    state.pan = null;
   });
+  overlayCanvas.addEventListener('wheel', onWheel, { passive: false });
+  window.addEventListener('keydown', onKeyDown);
 
   updateModeButtons();
   requestAnimationFrame(draw);
 
-  return { setMode, setCircuit };
-}
+  function setViewport(nextViewport) {
+    if (!nextViewport) return;
+    if (Number.isFinite(nextViewport.scale)) state.view.scale = nextViewport.scale;
+    if (Number.isFinite(nextViewport.offsetX)) state.view.offsetX = nextViewport.offsetX;
+    if (Number.isFinite(nextViewport.offsetY)) state.view.offsetY = nextViewport.offsetY;
+  }
 
+  return { setMode, setCircuit, setViewport, resetProbes };
+}

@@ -11,8 +11,53 @@ const DEFAULT_THEME = {
   warning: '#fbbf24',
 };
 
+const DEFAULT_DISPLAY = {
+  showNodeLabels: true,
+  showComponentValues: true,
+};
+
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
+}
+
+function formatNumber(value, digits) {
+  return Number.isFinite(value) ? value.toFixed(digits) : String(value);
+}
+
+function formatSI(value, unit) {
+  if (!Number.isFinite(value)) return `--${unit}`;
+  if (value === 0) return `0${unit}`;
+
+  const abs = Math.abs(value);
+  const prefixes = [
+    { p: 1e-12, s: 'p' },
+    { p: 1e-9, s: 'n' },
+    { p: 1e-6, s: 'µ' },
+    { p: 1e-3, s: 'm' },
+    { p: 1, s: '' },
+    { p: 1e3, s: 'k' },
+    { p: 1e6, s: 'M' },
+    { p: 1e9, s: 'G' },
+  ];
+
+  let chosen = prefixes[4];
+  for (const prefix of prefixes) {
+    if (abs >= prefix.p) chosen = prefix;
+  }
+
+  const scaled = value / chosen.p;
+  return `${formatNumber(scaled, 3)}${chosen.s}${unit}`;
+}
+
+function componentValueText(component) {
+  if (component.type === 'resistor') return formatSI(component.resistanceOhms, 'Ω');
+  if (component.type === 'voltageSource') return formatSI(component.voltageVolts, 'V');
+  if (component.type === 'currentSource') return formatSI(component.currentAmps, 'A');
+  if (component.type === 'zenerDiode') return `${formatNumber(component.breakdownVoltageVolts, 1)}V`;
+  if (component.type === 'bjtNpn' || component.type === 'bjtPnp') return `β=${formatNumber(component.beta, 0)}`;
+  if (component.type === 'mosfetN' || component.type === 'mosfetP')
+    return `Vth=${formatNumber(component.thresholdVoltageVolts, 1)}V`;
+  return '';
 }
 
 function magnitudeToSpeed(currentAbs) {
@@ -54,7 +99,7 @@ function drawWire(ctx, p1, p2, theme) {
   ctx.stroke();
 }
 
-function drawResistor(ctx, p1, p2, id, theme) {
+function drawResistor(ctx, p1, p2, id, theme, { valueText = '' } = {}) {
   const angle = lineAngle(p1, p2);
   const dx = p2.x - p1.x;
   const dy = p2.y - p1.y;
@@ -93,11 +138,12 @@ function drawResistor(ctx, p1, p2, id, theme) {
   ctx.font = '12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(id, 0, 0);
+  ctx.fillText(id, 0, valueText ? -6 : 0);
+  if (valueText) ctx.fillText(valueText, 0, 9);
   ctx.restore();
 }
 
-function drawCircleSource(ctx, p1, p2, id, theme, { kind, arrow } = {}) {
+function drawCircleSource(ctx, p1, p2, id, theme, { kind, arrow, valueText = '' } = {}) {
   const angle = lineAngle(p1, p2);
   const dx = p2.x - p1.x;
   const dy = p2.y - p1.y;
@@ -135,6 +181,7 @@ function drawCircleSource(ctx, p1, p2, id, theme, { kind, arrow } = {}) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(id, 0, -24);
+  if (valueText) ctx.fillText(valueText, 0, 24);
 
   if (kind === 'voltage') {
     ctx.fillText('+', radius + 10, 0);
@@ -415,12 +462,13 @@ function drawOpAmp(ctx, entry, theme, layout) {
 
 function drawComponent(ctx, entry, theme, layout) {
   const { component, p1, p2 } = entry;
+  const valueText = layout?.display?.showComponentValues ? componentValueText(component) : '';
   if (component.type === 'resistor') {
-    drawResistor(ctx, p1, p2, component.id, theme);
+    drawResistor(ctx, p1, p2, component.id, theme, { valueText });
   } else if (component.type === 'voltageSource') {
-    drawCircleSource(ctx, p1, p2, component.id, theme, { kind: 'voltage' });
+    drawCircleSource(ctx, p1, p2, component.id, theme, { kind: 'voltage', valueText });
   } else if (component.type === 'currentSource') {
-    drawCircleSource(ctx, p1, p2, component.id, theme, { kind: 'current', arrow: true });
+    drawCircleSource(ctx, p1, p2, component.id, theme, { kind: 'current', arrow: true, valueText });
   } else if (component.type === 'diode') {
     drawDiode(ctx, p1, p2, component.id, theme);
   } else if (component.type === 'zenerDiode') {
@@ -495,26 +543,32 @@ export function createCircuitRenderer(canvas, options = {}) {
   let animationHandle = null;
   let frameStart = null;
   let state = null;
+  let view = { scale: 1, offsetX: 0, offsetY: 0 };
+  let display = { ...DEFAULT_DISPLAY, ...(options.display ?? {}) };
 
   function drawFrame(timestampMs) {
     if (!state) return;
     if (frameStart === null) frameStart = timestampMs;
     const t = (timestampMs - frameStart) / 1000;
 
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = theme.background;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.setTransform(view.scale, 0, 0, view.scale, view.offsetX, view.offsetY);
 
     // Draw light wires first, then components, then nodes/labels, then current dots.
     for (const entry of state.layout.components) {
       drawWire(ctx, entry.p1, entry.p2, theme);
     }
+    state.layout.display = display;
     for (const entry of state.layout.components) {
       drawComponent(ctx, entry, theme, state.layout);
     }
 
     for (const [nodeId, p] of state.layout.positions.entries()) {
       drawNode(ctx, p, state.layout.nodeRadius, theme);
-      drawLabel(ctx, nodeId, p.x + 12, p.y, theme);
+      if (display.showNodeLabels) drawLabel(ctx, nodeId, p.x + 12, p.y, theme);
     }
 
     for (const entry of state.layout.components) {
@@ -557,5 +611,17 @@ export function createCircuitRenderer(canvas, options = {}) {
     animationHandle = requestAnimationFrame(drawFrame);
   }
 
-  return { render, stop };
+  function setView(nextView) {
+    if (!nextView) return;
+    const nextScale = Number.isFinite(nextView.scale) ? nextView.scale : view.scale;
+    const nextOffsetX = Number.isFinite(nextView.offsetX) ? nextView.offsetX : view.offsetX;
+    const nextOffsetY = Number.isFinite(nextView.offsetY) ? nextView.offsetY : view.offsetY;
+    view = { scale: nextScale, offsetX: nextOffsetX, offsetY: nextOffsetY };
+  }
+
+  function setDisplay(nextDisplay) {
+    display = { ...display, ...(nextDisplay ?? {}) };
+  }
+
+  return { render, stop, setView, setDisplay };
 }

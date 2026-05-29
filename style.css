@@ -238,6 +238,29 @@ canvas {
   color: rgba(199, 210, 254, 0.75);
 }
 
+.view__toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: rgba(199, 210, 254, 0.85);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.check input {
+  width: 16px;
+  height: 16px;
+}
+
+.view__help {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
 .quiz__status {
   color: var(--muted);
   margin: 0 0 6px;

@@ -15,6 +15,8 @@ const meterDetail = document.getElementById('meterDetail');
 const modeV = document.getElementById('modeV');
 const modeA = document.getElementById('modeA');
 const modeR = document.getElementById('modeR');
+const toggleLabels = document.getElementById('toggleLabels');
+const toggleValues = document.getElementById('toggleValues');
 const quizStatus = document.getElementById('quizStatus');
 const quizPrompt = document.getElementById('quizPrompt');
 const quizAnswer = document.getElementById('quizAnswer');
@@ -32,12 +34,23 @@ if (!(overlay instanceof HTMLCanvasElement)) {
   throw new Error('Missing <canvas id="schematicOverlay">');
 }
 
+const viewport = { scale: 1, offsetX: 0, offsetY: 0 };
+
 const renderer = createCircuitRenderer(canvas);
+renderer.setView(viewport);
+
 const multimeter = createMultimeterController({
   overlayCanvas: overlay,
   readoutEl: meterReadout,
   detailEl: meterDetail,
   modeButtons: { V: modeV, A: modeA, R: modeR },
+  viewport,
+  onViewportChange: (next) => {
+    viewport.scale = next.scale;
+    viewport.offsetX = next.offsetX;
+    viewport.offsetY = next.offsetY;
+    renderer.setView(viewport);
+  },
 });
 
 const quiz = createQuizController({
@@ -74,6 +87,12 @@ function renderNewCircuit() {
   const height = 650;
   const layout = layoutNetlist(netlist, { width, height });
 
+  viewport.scale = 1;
+  viewport.offsetX = 0;
+  viewport.offsetY = 0;
+  renderer.setView(viewport);
+  multimeter.setViewport(viewport);
+
   overlay.width = width;
   overlay.height = height;
   renderer.render(netlist, solution, { width, height, layout });
@@ -91,4 +110,16 @@ modeV?.addEventListener('click', () => multimeter.setMode('V'));
 modeA?.addEventListener('click', () => multimeter.setMode('A'));
 modeR?.addEventListener('click', () => multimeter.setMode('R'));
 
+function updateDisplay() {
+  const showNodeLabels =
+    !(toggleLabels instanceof HTMLInputElement) || toggleLabels.checked === undefined ? true : toggleLabels.checked;
+  const showComponentValues =
+    !(toggleValues instanceof HTMLInputElement) || toggleValues.checked === undefined ? true : toggleValues.checked;
+  renderer.setDisplay({ showNodeLabels, showComponentValues });
+}
+
+toggleLabels?.addEventListener?.('change', () => updateDisplay());
+toggleValues?.addEventListener?.('change', () => updateDisplay());
+
+updateDisplay();
 renderNewCircuit();
