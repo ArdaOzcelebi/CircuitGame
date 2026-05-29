@@ -59,3 +59,46 @@ test('solves an inverting ideal op-amp amplifier (linear)', () => {
   closeTo(result.nodeVoltages.nminus, 0, 1e-6);
   closeTo(result.nodeVoltages.out, -10, 1e-3);
 });
+
+test('solves a simple zener regulator operating point (non-linear)', () => {
+  const circuit = new Netlist({ ground: '0' })
+    .addVoltageSource('V1', 'vin', '0', 12)
+    .addResistor('R1', 'vin', 'vout', 1000)
+    .addZenerDiode('Z1', '0', 'vout', { breakdownVoltageVolts: 5.1, dynamicResistanceOhms: 10 });
+
+  const result = solveMNA(circuit);
+
+  assert.ok(result.nodeVoltages.vout > 4.5 && result.nodeVoltages.vout < 6.5);
+  assert.ok(result.branchCurrents.Z1 < 0);
+});
+
+test('solves an NPN switch (non-linear)', () => {
+  const circuit = new Netlist({ ground: '0' })
+    .addVoltageSource('VCC', 'vcc', '0', 5)
+    .addVoltageSource('VBB', 'vbb', '0', 5)
+    .addResistor('RC', 'vcc', 'c', 1000)
+    .addResistor('RB', 'vbb', 'b', 100000)
+    .addBjtNpn('Q1', 'c', 'b', '0', { beta: 100 });
+
+  const result = solveMNA(circuit);
+
+  assert.ok(result.nodeVoltages.c >= 0 && result.nodeVoltages.c < 1.5);
+  assert.ok(result.branchCurrents.Q1 > 0.001);
+});
+
+test('solves an NMOS low-side switch (non-linear)', () => {
+  const circuit = new Netlist({ ground: '0' })
+    .addVoltageSource('VCC', 'vcc', '0', 5)
+    .addVoltageSource('VG', 'g', '0', 5)
+    .addResistor('RL', 'vcc', 'd', 1000)
+    .addMosfetNChannel('M1', 'd', 'g', '0', {
+      thresholdVoltageVolts: 2.0,
+      onResistanceOhms: 5,
+      offResistanceOhms: 1e9,
+      smoothingVolts: 0.05,
+    });
+
+  const result = solveMNA(circuit);
+
+  assert.ok(result.nodeVoltages.d >= 0 && result.nodeVoltages.d < 0.5);
+});

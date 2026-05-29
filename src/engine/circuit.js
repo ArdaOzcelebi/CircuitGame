@@ -2,6 +2,13 @@ const EPSILON = 1e-12;
 const DEFAULT_THERMAL_VOLTAGE = 0.02585;
 const DEFAULT_DIODE_SATURATION_CURRENT = 1e-12;
 const DEFAULT_OPAMP_OPEN_LOOP_GAIN = 1e6;
+const DEFAULT_ZENER_BREAKDOWN_VOLTAGE = 5.1;
+const DEFAULT_ZENER_DYNAMIC_RESISTANCE_OHMS = 10;
+const DEFAULT_BJT_BETA = 100;
+const DEFAULT_MOSFET_THRESHOLD_VOLTS = 2.5;
+const DEFAULT_MOSFET_ON_RESISTANCE_OHMS = 10;
+const DEFAULT_MOSFET_OFF_RESISTANCE_OHMS = 1e9;
+const DEFAULT_MOSFET_SMOOTHING_VOLTS = 0.05;
 
 export class Netlist {
   constructor({ ground = '0' } = {}) {
@@ -106,6 +113,213 @@ export class Netlist {
     return this;
   }
 
+  addZenerDiode(
+    id,
+    anodeNode,
+    cathodeNode,
+    {
+      breakdownVoltageVolts = DEFAULT_ZENER_BREAKDOWN_VOLTAGE,
+      dynamicResistanceOhms = DEFAULT_ZENER_DYNAMIC_RESISTANCE_OHMS,
+      saturationCurrentAmps = DEFAULT_DIODE_SATURATION_CURRENT,
+      emissionCoefficient = 1,
+      thermalVoltageVolts = DEFAULT_THERMAL_VOLTAGE,
+    } = {},
+  ) {
+    if (!Number.isFinite(breakdownVoltageVolts) || breakdownVoltageVolts <= 0) {
+      throw new Error('Zener breakdown voltage must be a finite number > 0');
+    }
+    if (!Number.isFinite(dynamicResistanceOhms) || dynamicResistanceOhms <= 0) {
+      throw new Error('Zener dynamic resistance must be a finite number > 0');
+    }
+    if (saturationCurrentAmps <= 0) {
+      throw new Error('Zener saturation current must be > 0');
+    }
+    if (emissionCoefficient <= 0) {
+      throw new Error('Zener emission coefficient must be > 0');
+    }
+    if (thermalVoltageVolts <= 0) {
+      throw new Error('Zener thermal voltage must be > 0');
+    }
+    this.#addNode(anodeNode);
+    this.#addNode(cathodeNode);
+    this.components.push({
+      type: 'zenerDiode',
+      id,
+      anodeNode,
+      cathodeNode,
+      breakdownVoltageVolts,
+      dynamicResistanceOhms,
+      saturationCurrentAmps,
+      emissionCoefficient,
+      thermalVoltageVolts,
+    });
+    return this;
+  }
+
+  addBjtNpn(
+    id,
+    collectorNode,
+    baseNode,
+    emitterNode,
+    {
+      beta = DEFAULT_BJT_BETA,
+      saturationCurrentAmps = DEFAULT_DIODE_SATURATION_CURRENT,
+      emissionCoefficient = 1,
+      thermalVoltageVolts = DEFAULT_THERMAL_VOLTAGE,
+    } = {},
+  ) {
+    if (!Number.isFinite(beta) || beta <= 0) {
+      throw new Error('BJT beta must be a finite number > 0');
+    }
+    if (saturationCurrentAmps <= 0) {
+      throw new Error('BJT saturation current must be > 0');
+    }
+    if (emissionCoefficient <= 0) {
+      throw new Error('BJT emission coefficient must be > 0');
+    }
+    if (thermalVoltageVolts <= 0) {
+      throw new Error('BJT thermal voltage must be > 0');
+    }
+    this.#addNode(collectorNode);
+    this.#addNode(baseNode);
+    this.#addNode(emitterNode);
+    this.components.push({
+      type: 'bjtNpn',
+      id,
+      collectorNode,
+      baseNode,
+      emitterNode,
+      beta,
+      saturationCurrentAmps,
+      emissionCoefficient,
+      thermalVoltageVolts,
+    });
+    return this;
+  }
+
+  addBjtPnp(
+    id,
+    collectorNode,
+    baseNode,
+    emitterNode,
+    {
+      beta = DEFAULT_BJT_BETA,
+      saturationCurrentAmps = DEFAULT_DIODE_SATURATION_CURRENT,
+      emissionCoefficient = 1,
+      thermalVoltageVolts = DEFAULT_THERMAL_VOLTAGE,
+    } = {},
+  ) {
+    if (!Number.isFinite(beta) || beta <= 0) {
+      throw new Error('BJT beta must be a finite number > 0');
+    }
+    if (saturationCurrentAmps <= 0) {
+      throw new Error('BJT saturation current must be > 0');
+    }
+    if (emissionCoefficient <= 0) {
+      throw new Error('BJT emission coefficient must be > 0');
+    }
+    if (thermalVoltageVolts <= 0) {
+      throw new Error('BJT thermal voltage must be > 0');
+    }
+    this.#addNode(collectorNode);
+    this.#addNode(baseNode);
+    this.#addNode(emitterNode);
+    this.components.push({
+      type: 'bjtPnp',
+      id,
+      collectorNode,
+      baseNode,
+      emitterNode,
+      beta,
+      saturationCurrentAmps,
+      emissionCoefficient,
+      thermalVoltageVolts,
+    });
+    return this;
+  }
+
+  addMosfetNChannel(
+    id,
+    drainNode,
+    gateNode,
+    sourceNode,
+    {
+      thresholdVoltageVolts = DEFAULT_MOSFET_THRESHOLD_VOLTS,
+      onResistanceOhms = DEFAULT_MOSFET_ON_RESISTANCE_OHMS,
+      offResistanceOhms = DEFAULT_MOSFET_OFF_RESISTANCE_OHMS,
+      smoothingVolts = DEFAULT_MOSFET_SMOOTHING_VOLTS,
+    } = {},
+  ) {
+    if (!Number.isFinite(thresholdVoltageVolts)) {
+      throw new Error('MOSFET threshold voltage must be finite');
+    }
+    if (!Number.isFinite(onResistanceOhms) || onResistanceOhms <= 0) {
+      throw new Error('MOSFET on-resistance must be a finite number > 0');
+    }
+    if (!Number.isFinite(offResistanceOhms) || offResistanceOhms <= 0) {
+      throw new Error('MOSFET off-resistance must be a finite number > 0');
+    }
+    if (!Number.isFinite(smoothingVolts) || smoothingVolts <= 0) {
+      throw new Error('MOSFET smoothing volts must be a finite number > 0');
+    }
+    this.#addNode(drainNode);
+    this.#addNode(gateNode);
+    this.#addNode(sourceNode);
+    this.components.push({
+      type: 'mosfetN',
+      id,
+      drainNode,
+      gateNode,
+      sourceNode,
+      thresholdVoltageVolts,
+      onResistanceOhms,
+      offResistanceOhms,
+      smoothingVolts,
+    });
+    return this;
+  }
+
+  addMosfetPChannel(
+    id,
+    drainNode,
+    gateNode,
+    sourceNode,
+    {
+      thresholdVoltageVolts = DEFAULT_MOSFET_THRESHOLD_VOLTS,
+      onResistanceOhms = DEFAULT_MOSFET_ON_RESISTANCE_OHMS,
+      offResistanceOhms = DEFAULT_MOSFET_OFF_RESISTANCE_OHMS,
+      smoothingVolts = DEFAULT_MOSFET_SMOOTHING_VOLTS,
+    } = {},
+  ) {
+    if (!Number.isFinite(thresholdVoltageVolts)) {
+      throw new Error('MOSFET threshold voltage must be finite');
+    }
+    if (!Number.isFinite(onResistanceOhms) || onResistanceOhms <= 0) {
+      throw new Error('MOSFET on-resistance must be a finite number > 0');
+    }
+    if (!Number.isFinite(offResistanceOhms) || offResistanceOhms <= 0) {
+      throw new Error('MOSFET off-resistance must be a finite number > 0');
+    }
+    if (!Number.isFinite(smoothingVolts) || smoothingVolts <= 0) {
+      throw new Error('MOSFET smoothing volts must be a finite number > 0');
+    }
+    this.#addNode(drainNode);
+    this.#addNode(gateNode);
+    this.#addNode(sourceNode);
+    this.components.push({
+      type: 'mosfetP',
+      id,
+      drainNode,
+      gateNode,
+      sourceNode,
+      thresholdVoltageVolts,
+      onResistanceOhms,
+      offResistanceOhms,
+      smoothingVolts,
+    });
+    return this;
+  }
+
   #addNode(nodeId) {
     this.nodes.add(nodeId);
   }
@@ -116,6 +330,9 @@ export function solveMNA(netlist) {
   const nodeIndex = new Map(nodes.map((n, i) => [n, i]));
   const voltageSources = netlist.components.filter((c) => c.type === 'voltageSource');
   const diodes = netlist.components.filter((c) => c.type === 'diode');
+  const zenerDiodes = netlist.components.filter((c) => c.type === 'zenerDiode');
+  const bjts = netlist.components.filter((c) => c.type === 'bjtNpn' || c.type === 'bjtPnp');
+  const mosfets = netlist.components.filter((c) => c.type === 'mosfetN' || c.type === 'mosfetP');
   const opAmps = netlist.components.filter((c) => c.type === 'idealOpAmp');
 
   const n = nodes.length;
@@ -137,12 +354,17 @@ export function solveMNA(netlist) {
 
   let x;
 
-  if (diodes.length === 0) {
+  const hasNonLinear = diodes.length + zenerDiodes.length + bjts.length + mosfets.length > 0;
+
+  if (!hasNonLinear) {
     const { A, z } = buildMnaSystem({
       netlist,
       idx,
       voltageSources,
       diodes,
+      zenerDiodes,
+      bjts,
+      mosfets,
       opAmps,
       guessNodeVoltages: Array(n).fill(0),
       n,
@@ -169,6 +391,9 @@ export function solveMNA(netlist) {
         idx,
         voltageSources,
         diodes,
+        zenerDiodes,
+        bjts,
+        mosfets,
         opAmps,
         guessNodeVoltages,
         n,
@@ -212,6 +437,14 @@ export function solveMNA(netlist) {
       const vA = nodeVoltages[component.anodeNode] ?? 0;
       const vC = nodeVoltages[component.cathodeNode] ?? 0;
       branchCurrents[component.id] = diodeCurrentFromVoltage(component, vA - vC);
+    } else if (component.type === 'zenerDiode') {
+      const vA = nodeVoltages[component.anodeNode] ?? 0;
+      const vC = nodeVoltages[component.cathodeNode] ?? 0;
+      branchCurrents[component.id] = zenerCurrentFromVoltage(component, vA - vC);
+    } else if (component.type === 'bjtNpn' || component.type === 'bjtPnp') {
+      branchCurrents[component.id] = bjtCollectorCurrentFromVoltages(component, nodeVoltages);
+    } else if (component.type === 'mosfetN' || component.type === 'mosfetP') {
+      branchCurrents[component.id] = mosfetDrainCurrentFromVoltages(component, nodeVoltages);
     }
   }
 
@@ -231,6 +464,9 @@ function buildMnaSystem({
   idx,
   voltageSources,
   diodes,
+  zenerDiodes,
+  bjts,
+  mosfets,
   opAmps,
   guessNodeVoltages,
   n,
@@ -283,6 +519,31 @@ function buildMnaSystem({
 
     if (i >= 0) z[i] -= equivalentCurrentAmps;
     if (j >= 0) z[j] += equivalentCurrentAmps;
+  }
+
+  for (const zener of zenerDiodes) {
+    const vD = nodeVoltage(zener.anodeNode) - nodeVoltage(zener.cathodeNode);
+    const { conductanceSiemens, equivalentCurrentAmps } = linearizeZener(zener, vD);
+
+    const i = idx(zener.anodeNode);
+    const j = idx(zener.cathodeNode);
+    if (i >= 0) A[i][i] += conductanceSiemens;
+    if (j >= 0) A[j][j] += conductanceSiemens;
+    if (i >= 0 && j >= 0) {
+      A[i][j] -= conductanceSiemens;
+      A[j][i] -= conductanceSiemens;
+    }
+
+    if (i >= 0) z[i] -= equivalentCurrentAmps;
+    if (j >= 0) z[j] += equivalentCurrentAmps;
+  }
+
+  for (const bjt of bjts) {
+    stampBjt(A, z, bjt, { idx, nodeVoltage });
+  }
+
+  for (const mosfet of mosfets) {
+    stampMosfetConductance(A, mosfet, { idx, nodeVoltage });
   }
 
   voltageSources.forEach((source, k) => {
@@ -356,6 +617,180 @@ function diodeCurrentFromVoltage(diode, vD) {
   const x = vD / (n * Vt);
   const expX = safeExp(x);
   return Is * (expX - 1);
+}
+
+function linearizeZener(zener, vD) {
+  const { breakdownVoltageVolts: Vz, dynamicResistanceOhms: rZ } = zener;
+
+  if (vD >= 0) {
+    return linearizeDiode(zener, vD);
+  }
+
+  if (vD <= -Vz) {
+    const g = 1 / rZ;
+    const i = (vD + Vz) * g;
+    const iEq = i - g * vD;
+    return { conductanceSiemens: g, equivalentCurrentAmps: iEq };
+  }
+
+  // Between 0 and breakdown: keep a tiny conductance to avoid numerical dead-ends.
+  const gLeak = 1e-12;
+  const iLeak = gLeak * vD;
+  const iEq = iLeak - gLeak * vD;
+  return { conductanceSiemens: gLeak, equivalentCurrentAmps: iEq };
+}
+
+function zenerCurrentFromVoltage(zener, vD) {
+  const { breakdownVoltageVolts: Vz, dynamicResistanceOhms: rZ } = zener;
+  if (vD >= 0) return diodeCurrentFromVoltage(zener, vD);
+  if (vD <= -Vz) return (vD + Vz) / rZ;
+  return 0;
+}
+
+function stampBjt(A, z, bjt, { idx, nodeVoltage }) {
+  const c = bjt.collectorNode;
+  const b = bjt.baseNode;
+  const e = bjt.emitterNode;
+
+  if (bjt.type === 'bjtNpn') {
+    stampDiodeBetweenNodes(A, z, b, e, bjt, { idx, nodeVoltage });
+    stampBjtCollectorCurrentNpn(A, z, bjt, { idx, nodeVoltage });
+    return;
+  }
+
+  if (bjt.type === 'bjtPnp') {
+    stampDiodeBetweenNodes(A, z, e, b, bjt, { idx, nodeVoltage });
+    stampBjtCollectorCurrentPnp(A, z, bjt, { idx, nodeVoltage });
+    return;
+  }
+
+  throw new Error(`Unknown BJT type: ${bjt.type} (${bjt.id}) between ${c},${b},${e}`);
+}
+
+function stampDiodeBetweenNodes(A, z, anodeNode, cathodeNode, diodeLike, { idx, nodeVoltage }) {
+  const vD = nodeVoltage(anodeNode) - nodeVoltage(cathodeNode);
+  const { conductanceSiemens, equivalentCurrentAmps } = linearizeDiode(diodeLike, vD);
+
+  const i = idx(anodeNode);
+  const j = idx(cathodeNode);
+  if (i >= 0) A[i][i] += conductanceSiemens;
+  if (j >= 0) A[j][j] += conductanceSiemens;
+  if (i >= 0 && j >= 0) {
+    A[i][j] -= conductanceSiemens;
+    A[j][i] -= conductanceSiemens;
+  }
+
+  if (i >= 0) z[i] -= equivalentCurrentAmps;
+  if (j >= 0) z[j] += equivalentCurrentAmps;
+}
+
+function stampVccs(A, z, fromNode, toNode, controlPosNode, controlNegNode, g, iEq, idx) {
+  const from = idx(fromNode);
+  const to = idx(toNode);
+  const cp = idx(controlPosNode);
+  const cn = idx(controlNegNode);
+
+  if (from >= 0) {
+    if (cp >= 0) A[from][cp] += g;
+    if (cn >= 0) A[from][cn] -= g;
+    z[from] -= iEq;
+  }
+  if (to >= 0) {
+    if (cp >= 0) A[to][cp] -= g;
+    if (cn >= 0) A[to][cn] += g;
+    z[to] += iEq;
+  }
+}
+
+function stampBjtCollectorCurrentNpn(A, z, bjt, { idx, nodeVoltage }) {
+  const vForward = nodeVoltage(bjt.baseNode) - nodeVoltage(bjt.emitterNode);
+  const { g, iEq } = linearizeBetaTimesForwardDiodeCurrent(bjt, vForward);
+  stampVccs(A, z, bjt.collectorNode, bjt.emitterNode, bjt.baseNode, bjt.emitterNode, g, iEq, idx);
+}
+
+function stampBjtCollectorCurrentPnp(A, z, bjt, { idx, nodeVoltage }) {
+  const vForward = nodeVoltage(bjt.emitterNode) - nodeVoltage(bjt.baseNode);
+  const { g, iEq } = linearizeBetaTimesForwardDiodeCurrent(bjt, vForward);
+  stampVccs(A, z, bjt.emitterNode, bjt.collectorNode, bjt.emitterNode, bjt.baseNode, g, iEq, idx);
+}
+
+function linearizeBetaTimesForwardDiodeCurrent(bjt, vForward) {
+  if (vForward <= 0) {
+    return { g: 0, iEq: 0 };
+  }
+  const diodeLin = linearizeDiode(bjt, vForward);
+  const i = bjt.beta * (diodeCurrentFromVoltage(bjt, vForward) > 0 ? diodeCurrentFromVoltage(bjt, vForward) : 0);
+  const g = bjt.beta * diodeLin.conductanceSiemens;
+  const iEq = i - g * vForward;
+  return { g, iEq };
+}
+
+function bjtCollectorCurrentFromVoltages(bjt, nodeVoltages) {
+  const vB = nodeVoltages[bjt.baseNode] ?? 0;
+  const vE = nodeVoltages[bjt.emitterNode] ?? 0;
+  if (bjt.type === 'bjtNpn') {
+    const vForward = vB - vE;
+    if (vForward <= 0) return 0;
+    const i = diodeCurrentFromVoltage(bjt, vForward);
+    return bjt.beta * Math.max(0, i);
+  }
+  if (bjt.type === 'bjtPnp') {
+    const vForward = vE - vB;
+    if (vForward <= 0) return 0;
+    const i = diodeCurrentFromVoltage(bjt, vForward);
+    return -bjt.beta * Math.max(0, i);
+  }
+  return 0;
+}
+
+function stampMosfetConductance(A, mosfet, { idx, nodeVoltage }) {
+  const g = mosfetConductance(mosfet, { nodeVoltage });
+  stampConductanceBetweenNodes(A, mosfet.drainNode, mosfet.sourceNode, g, idx);
+}
+
+function stampConductanceBetweenNodes(A, nodeA, nodeB, g, idx) {
+  const i = idx(nodeA);
+  const j = idx(nodeB);
+  if (i >= 0) A[i][i] += g;
+  if (j >= 0) A[j][j] += g;
+  if (i >= 0 && j >= 0) {
+    A[i][j] -= g;
+    A[j][i] -= g;
+  }
+}
+
+function mosfetConductance(mosfet, { nodeVoltage }) {
+  const gOn = 1 / mosfet.onResistanceOhms;
+  const gOff = 1 / mosfet.offResistanceOhms;
+  const k = mosfet.smoothingVolts;
+
+  if (mosfet.type === 'mosfetN') {
+    const vgs = nodeVoltage(mosfet.gateNode) - nodeVoltage(mosfet.sourceNode);
+    const t = sigmoid((vgs - mosfet.thresholdVoltageVolts) / k);
+    return gOff + (gOn - gOff) * t;
+  }
+
+  if (mosfet.type === 'mosfetP') {
+    const vsg = nodeVoltage(mosfet.sourceNode) - nodeVoltage(mosfet.gateNode);
+    const t = sigmoid((vsg - mosfet.thresholdVoltageVolts) / k);
+    return gOff + (gOn - gOff) * t;
+  }
+
+  return gOff;
+}
+
+function mosfetDrainCurrentFromVoltages(mosfet, nodeVoltages) {
+  const nodeVoltage = (nodeId) => nodeVoltages[nodeId] ?? 0;
+  const g = mosfetConductance(mosfet, { nodeVoltage });
+  const vD = nodeVoltage(mosfet.drainNode);
+  const vS = nodeVoltage(mosfet.sourceNode);
+  return g * (vD - vS);
+}
+
+function sigmoid(x) {
+  // Clamp input to keep exp stable.
+  const clamped = clamp(x, -40, 40);
+  return 1 / (1 + Math.exp(-clamped));
 }
 
 function safeExp(x) {
