@@ -100,6 +100,11 @@ body {
   width: 160px;
 }
 
+select.field__input {
+  width: 140px;
+  cursor: pointer;
+}
+
 .main {
   display: grid;
   grid-template-columns: 1fr 320px;

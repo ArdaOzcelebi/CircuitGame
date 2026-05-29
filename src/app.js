@@ -9,6 +9,7 @@ const overlay = document.getElementById('schematicOverlay');
 const info = document.getElementById('info');
 const newCircuitBtn = document.getElementById('newCircuitBtn');
 const seedInput = document.getElementById('seedInput');
+const difficultySelect = document.getElementById('difficultySelect');
 const meterReadout = document.getElementById('meterReadout');
 const meterDetail = document.getElementById('meterDetail');
 const modeV = document.getElementById('modeV');
@@ -56,13 +57,16 @@ function formatMeta(meta) {
     `nodes: ${meta.nodeCount}`,
     `components: ${meta.componentCount}`,
     `loops: ${meta.loopCount}`,
+    `difficulty: ${meta.difficulty ?? 'legacy'}`,
     meta.seed ? `seed: ${meta.seed}` : 'seed: (random)',
   ].join('\n');
 }
 
 function renderNewCircuit() {
   const seed = seedInput?.value?.trim() || undefined;
-  const { netlist, solution, meta } = generateCircuit({ seed });
+  const difficulty =
+    difficultySelect instanceof HTMLSelectElement && difficultySelect.value ? difficultySelect.value : undefined;
+  const { netlist, solution, meta } = generateCircuit({ seed, difficulty });
 
   if (info) info.textContent = formatMeta(meta);
 
@@ -81,6 +85,7 @@ newCircuitBtn?.addEventListener('click', () => renderNewCircuit());
 seedInput?.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') renderNewCircuit();
 });
+difficultySelect?.addEventListener('change', () => renderNewCircuit());
 
 modeV?.addEventListener('click', () => multimeter.setMode('V'));
 modeA?.addEventListener('click', () => multimeter.setMode('A'));

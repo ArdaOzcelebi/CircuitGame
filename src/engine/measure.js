@@ -20,6 +20,16 @@ function sourcesPoweredOff(netlist) {
       off.addVoltageSource(component.id, component.positiveNode, component.negativeNode, 0);
     } else if (component.type === 'currentSource') {
       // Turn off independent current source => open circuit (remove).
+    } else if (
+      component.type === 'diode' ||
+      component.type === 'zenerDiode' ||
+      component.type === 'idealOpAmp' ||
+      component.type === 'bjtNpn' ||
+      component.type === 'bjtPnp' ||
+      component.type === 'mosfetN' ||
+      component.type === 'mosfetP'
+    ) {
+      // Non-linear and controlled elements are removed for equivalent resistance measurements.
     } else {
       throw new Error(`Unknown component type: ${component.type}`);
     }

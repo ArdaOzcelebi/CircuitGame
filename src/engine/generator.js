@@ -7,7 +7,39 @@ const DEFAULTS = {
   minLoops: 2,
   maxLoops: 4,
   maxAttempts: 250,
+  difficulty: undefined,
 };
+
+const DIFFICULTY_PRESETS = {
+  easy: {
+    minComponents: 4,
+    maxComponents: 8,
+    minLoops: 1,
+    maxLoops: 2,
+  },
+  medium: {
+    minComponents: 6,
+    maxComponents: 12,
+    // Leave headroom for non-linear devices added after the base topology is generated.
+    minLoops: 1,
+    maxLoops: 2,
+  },
+  hard: {
+    minComponents: 6,
+    maxComponents: 14,
+    minLoops: 2,
+    maxLoops: 4,
+  },
+};
+
+function normalizeDifficulty(value) {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'easy') return 'easy';
+  if (normalized === 'medium') return 'medium';
+  if (normalized === 'hard') return 'hard';
+  return null;
+}
 
 function fnv1a32(input) {
   const text = typeof input === 'string' ? input : JSON.stringify(input);
@@ -144,12 +176,99 @@ function buildNetlistFromEdges(rng, ground, edges, vertexCount) {
   return netlist;
 }
 
+function nextComponentId(netlist, prefix) {
+  let max = 0;
+  for (const component of netlist.components) {
+    if (typeof component.id !== 'string') continue;
+    if (!component.id.startsWith(prefix)) continue;
+    const tail = component.id.slice(prefix.length);
+    const n = Number.parseInt(tail, 10);
+    if (Number.isFinite(n)) max = Math.max(max, n);
+  }
+  return `${prefix}${max + 1}`;
+}
+
+function addMediumDevices(rng, netlist) {
+  const ground = netlist.ground;
+  const nodes = [...netlist.nodes].filter((n) => n !== ground).sort();
+  if (nodes.length === 0) return;
+
+  const loops0 = netlist.components.length - netlist.nodes.size + 1;
+  let budget = Math.max(1, 3 - loops0);
+  let added = 0;
+
+  const nodeA = pick(rng, nodes);
+  const nodeB = pick(rng, nodes);
+
+  if (budget > 0 && rng() < 0.7) {
+    netlist.addDiode(nextComponentId(netlist, 'D'), nodeA, ground);
+    budget -= 1;
+    added += 1;
+  }
+
+  if (budget > 0 && rng() < 0.6) {
+    netlist.addZenerDiode(nextComponentId(netlist, 'Z'), ground, nodeB, {
+      breakdownVoltageVolts: pick(rng, [3.3, 4.7, 5.1, 6.2, 9.1]),
+      dynamicResistanceOhms: pick(rng, [5, 10, 22]),
+    });
+    budget -= 1;
+    added += 1;
+  }
+
+  if (budget > 0 && nodes.length >= 2 && rng() < 0.45) {
+    const collectorNode = pick(rng, nodes);
+    const baseNode = pick(rng, nodes.filter((n) => n !== collectorNode));
+    netlist.addBjtNpn(nextComponentId(netlist, 'Q'), collectorNode, baseNode, ground, {
+      beta: pick(rng, [50, 80, 120, 200]),
+    });
+    budget -= 1;
+    added += 1;
+  }
+
+  if (added === 0) {
+    netlist.addDiode(nextComponentId(netlist, 'D'), nodeA, ground);
+  }
+}
+
+function buildHardTemplate(rng, ground) {
+  const netlist = new Netlist({ ground });
+
+  const vinNode = 'vin';
+  const invNode = 'nminus';
+  const outNode = 'out';
+
+  const vin = pick(rng, [0.5, 1, 1.5, 2]);
+  const rin = pick(rng, [1000, 2200, 4700]);
+  const rf = pick(rng, [4700, 10000, 22000]);
+  const rload = pick(rng, [1000, 2200, 4700]);
+
+  netlist.addVoltageSource('V1', vinNode, ground, vin);
+  netlist.addResistor('R1', vinNode, invNode, rin);
+  netlist.addResistor('R2', outNode, invNode, rf);
+  netlist.addResistor('R3', outNode, ground, rload);
+  netlist.addIdealOpAmp('U1', ground, invNode, outNode, ground, { openLoopGain: 1e9 });
+
+  // Optional output clamp with a diode or zener to add non-linearity.
+  if (rng() < 0.35) {
+    netlist.addDiode('D1', outNode, ground);
+  } else if (rng() < 0.35) {
+    netlist.addZenerDiode('Z1', ground, outNode, {
+      breakdownVoltageVolts: pick(rng, [5.1, 6.2, 9.1]),
+      dynamicResistanceOhms: pick(rng, [5, 10, 22]),
+    });
+  }
+
+  return netlist;
+}
+
 function isFiniteNumber(value) {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
 export function generateCircuit(options = {}) {
-  const config = { ...DEFAULTS, ...options };
+  const requestedDifficulty = normalizeDifficulty(options.difficulty);
+  const preset = requestedDifficulty ? DIFFICULTY_PRESETS[requestedDifficulty] : null;
+  const config = { ...DEFAULTS, ...(preset ?? {}), ...options };
   const {
     seed,
     ground,
@@ -158,6 +277,7 @@ export function generateCircuit(options = {}) {
     minLoops,
     maxLoops,
     maxAttempts,
+    difficulty,
   } = config;
 
   if (minComponents < 3) throw new Error('minComponents must be >= 3');
@@ -166,18 +286,33 @@ export function generateCircuit(options = {}) {
   if (maxLoops < minLoops) throw new Error('maxLoops must be >= minLoops');
 
   const rng = makeRng(seed);
+  const actualDifficulty = normalizeDifficulty(difficulty);
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const { vertices, edges, loops } = chooseTopology(rng, {
-      minComponents,
-      maxComponents,
-      minLoops,
-      maxLoops,
-    });
+    let netlist;
+    let loops;
 
-    const nodeIds = [ground, ...Array.from({ length: vertices - 1 }, (_, idx) => `n${idx + 1}`)];
-    const edgeList = buildConnectedEdges(rng, nodeIds, edges);
-    const netlist = buildNetlistFromEdges(rng, ground, edgeList, nodeIds.length);
+    if (actualDifficulty === 'hard') {
+      netlist = buildHardTemplate(rng, ground);
+      loops = netlist.components.length - netlist.nodes.size + 1;
+    } else {
+      const { vertices, edges, loops: chosenLoops } = chooseTopology(rng, {
+        minComponents,
+        maxComponents,
+        minLoops,
+        maxLoops,
+      });
+
+      const nodeIds = [ground, ...Array.from({ length: vertices - 1 }, (_, idx) => `n${idx + 1}`)];
+      const edgeList = buildConnectedEdges(rng, nodeIds, edges);
+      netlist = buildNetlistFromEdges(rng, ground, edgeList, nodeIds.length);
+      loops = chosenLoops;
+
+      if (actualDifficulty === 'medium') {
+        addMediumDevices(rng, netlist);
+        loops = netlist.components.length - netlist.nodes.size + 1;
+      }
+    }
 
     try {
       const solution = solveMNA(netlist);
@@ -189,6 +324,7 @@ export function generateCircuit(options = {}) {
         solution,
         meta: {
           seed,
+          difficulty: actualDifficulty ?? 'legacy',
           nodeCount: netlist.nodes.size,
           componentCount: netlist.components.length,
           loopCount: loops,
