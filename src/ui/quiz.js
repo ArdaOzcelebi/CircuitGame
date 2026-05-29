@@ -1,4 +1,5 @@
 import { generateQuizQuestions, gradeQuizAnswer } from '../quiz/generateQuiz.js';
+import { getProgressiveHints } from '../quiz/hints.js';
 
 function formatNumber(value, digits) {
   return Number.isFinite(value) ? value.toFixed(digits) : String(value);
@@ -41,10 +42,13 @@ export function createQuizController({
   submitBtnEl,
   nextBtnEl,
   newQuizBtnEl,
+  hintBtnEl,
+  hintTextEl,
   feedbackEl,
   scoreEl,
   solutionsEl,
   questionCount = 5,
+  onHintHighlight = null,
 } = {}) {
   const state = {
     netlist: null,
@@ -54,6 +58,7 @@ export function createQuizController({
     index: 0,
     correct: 0,
     submittedCurrent: false,
+    hintLevel: 0,
   };
 
   function updateText(el, text) {
@@ -83,9 +88,10 @@ export function createQuizController({
     solutionsEl.replaceChildren(...items);
   }
 
-  function setButtons({ canSubmit, canNext }) {
+  function setButtons({ canSubmit, canNext, canHint }) {
     if (submitBtnEl instanceof HTMLButtonElement) submitBtnEl.disabled = !canSubmit;
     if (nextBtnEl instanceof HTMLButtonElement) nextBtnEl.disabled = !canNext;
+    if (hintBtnEl instanceof HTMLButtonElement) hintBtnEl.disabled = !canHint;
   }
 
   function currentQuestion() {
@@ -97,11 +103,14 @@ export function createQuizController({
     const q = currentQuestion();
 
     updateText(scoreEl, `score: ${state.correct}/${total || questionCount}`);
+    updateText(hintTextEl, '');
+    state.hintLevel = 0;
+    onHintHighlight?.({ nodes: [], components: [] });
 
     if (!q) {
       updateText(statusEl, total ? 'Quiz complete' : 'No quiz loaded');
       updateText(promptEl, total ? 'Generate a new quiz or a new circuit.' : '');
-      setButtons({ canSubmit: false, canNext: false });
+      setButtons({ canSubmit: false, canNext: false, canHint: false });
       if (answerInputEl instanceof HTMLInputElement) answerInputEl.value = '';
       return;
     }
@@ -119,7 +128,7 @@ export function createQuizController({
     }
 
     state.submittedCurrent = false;
-    setButtons({ canSubmit: true, canNext: false });
+    setButtons({ canSubmit: true, canNext: false, canHint: true });
   }
 
   function resetQuiz() {
@@ -133,6 +142,7 @@ export function createQuizController({
     state.index = 0;
     state.correct = 0;
     state.submittedCurrent = false;
+    state.hintLevel = 0;
     renderSolutions();
     render();
   }
@@ -184,16 +194,35 @@ export function createQuizController({
       state.index = state.questions.length;
       updateText(statusEl, 'Quiz complete');
       updateText(promptEl, 'Generate a new quiz, or generate a new circuit.');
-      setButtons({ canSubmit: false, canNext: false });
+      setButtons({ canSubmit: false, canNext: false, canHint: false });
+      updateText(hintTextEl, '');
+      state.hintLevel = 0;
+      onHintHighlight?.({ nodes: [], components: [] });
       return;
     }
     state.index += 1;
     render();
   }
 
+  function hint() {
+    const q = currentQuestion();
+    if (!q || !state.netlist) return;
+
+    const hints = getProgressiveHints({ question: q, netlist: state.netlist });
+    const nextLevel = Math.min(3, state.hintLevel + 1);
+    state.hintLevel = nextLevel;
+
+    const h = hints[nextLevel - 1];
+    if (!h) return;
+
+    updateText(hintTextEl, `Hint ${nextLevel}/3 (${h.title}): ${h.text}`);
+    onHintHighlight?.(h.highlight ?? { nodes: [], components: [] });
+  }
+
   submitBtnEl?.addEventListener?.('click', () => submit());
   nextBtnEl?.addEventListener?.('click', () => next());
   newQuizBtnEl?.addEventListener?.('click', () => resetQuiz());
+  hintBtnEl?.addEventListener?.('click', () => hint());
   answerInputEl?.addEventListener?.('keydown', (event) => {
     if (event.key !== 'Enter') return;
     if (!state.submittedCurrent) submit();

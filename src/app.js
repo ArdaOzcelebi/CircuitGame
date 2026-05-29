@@ -3,6 +3,7 @@ import { createCircuitRenderer } from './render/renderer.js';
 import { layoutNetlist } from './render/layout.js';
 import { createMultimeterController } from './ui/multimeter.js';
 import { createQuizController } from './ui/quiz.js';
+import { createManualController } from './ui/manual.js';
 
 const canvas = document.getElementById('schematic');
 const overlay = document.getElementById('schematicOverlay');
@@ -23,9 +24,12 @@ const quizAnswer = document.getElementById('quizAnswer');
 const quizSubmit = document.getElementById('quizSubmit');
 const quizNext = document.getElementById('quizNext');
 const newQuizBtn = document.getElementById('newQuizBtn');
+const quizHint = document.getElementById('quizHint');
+const quizHintText = document.getElementById('quizHintText');
 const quizFeedback = document.getElementById('quizFeedback');
 const quizScore = document.getElementById('quizScore');
 const quizSolutions = document.getElementById('quizSolutions');
+const manualPanel = document.getElementById('manualPanel');
 
 if (!(canvas instanceof HTMLCanvasElement)) {
   throw new Error('Missing <canvas id="schematic">');
@@ -60,10 +64,15 @@ const quiz = createQuizController({
   submitBtnEl: quizSubmit,
   nextBtnEl: quizNext,
   newQuizBtnEl: newQuizBtn,
+  hintBtnEl: quizHint,
+  hintTextEl: quizHintText,
   feedbackEl: quizFeedback,
   scoreEl: quizScore,
   solutionsEl: quizSolutions,
+  onHintHighlight: (highlight) => multimeter.setHintHighlight(highlight),
 });
+
+const manual = createManualController({ containerEl: manualPanel });
 
 function formatMeta(meta) {
   return [
@@ -98,6 +107,7 @@ function renderNewCircuit() {
   renderer.render(netlist, solution, { width, height, layout });
   multimeter.setCircuit({ layout, netlist, solution });
   quiz.setCircuit({ netlist, solution, seed: seed ?? `${Date.now()}` });
+  manual.setCircuit({ netlist, solution });
 }
 
 newCircuitBtn?.addEventListener('click', () => renderNewCircuit());

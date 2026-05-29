@@ -189,6 +189,7 @@ export function createMultimeterController({
     ghost: null,
     view: { ...viewport },
     pan: null,
+    hintHighlight: { nodes: new Set(), components: new Set() },
     dragging: null,
     hoverComponentId: null,
   };
@@ -221,6 +222,7 @@ export function createMultimeterController({
     state.hoverComponentId = null;
     state.probes = defaultProbeTargets(layout, netlist);
     state.ghost = null;
+    state.hintHighlight = { nodes: new Set(), components: new Set() };
   }
 
   function snapProbe(probe, { snapScreenPx = 22 } = {}) {
@@ -350,10 +352,32 @@ export function createMultimeterController({
     ctx.restore();
   }
 
+  function drawNodeHighlight(nodeId, color) {
+    if (!nodeId || !state.layout) return;
+    const p = state.layout.positions.get(nodeId);
+    if (!p) return;
+
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3 / Math.max(0.1, state.view.scale);
+    ctx.globalAlpha = 0.7;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, (state.layout.nodeRadius + 14) / Math.max(0.1, state.view.scale), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function draw() {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
     ctx.setTransform(state.view.scale, 0, 0, state.view.scale, state.view.offsetX, state.view.offsetY);
+
+    for (const componentId of state.hintHighlight.components) {
+      drawComponentHighlight(componentId, '#60a5fa');
+    }
+    for (const nodeId of state.hintHighlight.nodes) {
+      drawNodeHighlight(nodeId, '#60a5fa');
+    }
 
     if (state.mode === MODE.A) {
       const pinned = state.probes.red.target?.kind === 'component' ? state.probes.red.target.id : null;
@@ -439,5 +463,9 @@ export function createMultimeterController({
     if (Number.isFinite(nextViewport.offsetY)) state.view.offsetY = nextViewport.offsetY;
   }
 
-  return { setMode, setCircuit, setViewport, resetProbes };
+  function setHintHighlight({ nodes = [], components = [] } = {}) {
+    state.hintHighlight = { nodes: new Set(nodes), components: new Set(components) };
+  }
+
+  return { setMode, setCircuit, setViewport, resetProbes, setHintHighlight };
 }
