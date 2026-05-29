@@ -85,29 +85,39 @@ function formatMeta(meta) {
 }
 
 function renderNewCircuit() {
-  const seed = seedInput?.value?.trim() || undefined;
-  const difficulty =
-    difficultySelect instanceof HTMLSelectElement && difficultySelect.value ? difficultySelect.value : undefined;
-  const { netlist, solution, meta } = generateCircuit({ seed, difficulty });
+  try {
+    if (newCircuitBtn instanceof HTMLButtonElement) newCircuitBtn.disabled = true;
 
-  if (info) info.textContent = formatMeta(meta);
+    const seed = seedInput?.value?.trim() || undefined;
+    const difficulty =
+      difficultySelect instanceof HTMLSelectElement && difficultySelect.value ? difficultySelect.value : undefined;
+    const { netlist, solution, meta } = generateCircuit({ seed, difficulty });
 
-  const width = 1000;
-  const height = 650;
-  const layout = layoutNetlist(netlist, { width, height });
+    if (info) info.textContent = formatMeta(meta);
 
-  viewport.scale = 1;
-  viewport.offsetX = 0;
-  viewport.offsetY = 0;
-  renderer.setView(viewport);
-  multimeter.setViewport(viewport);
+    const width = 1000;
+    const height = 650;
+    const layout = layoutNetlist(netlist, { width, height });
 
-  overlay.width = width;
-  overlay.height = height;
-  renderer.render(netlist, solution, { width, height, layout });
-  multimeter.setCircuit({ layout, netlist, solution });
-  quiz.setCircuit({ netlist, solution, seed: seed ?? `${Date.now()}` });
-  manual.setCircuit({ netlist, solution });
+    viewport.scale = 1;
+    viewport.offsetX = 0;
+    viewport.offsetY = 0;
+    renderer.setView(viewport);
+    multimeter.setViewport(viewport);
+
+    overlay.width = width;
+    overlay.height = height;
+    renderer.render(netlist, solution, { width, height, layout });
+    multimeter.setCircuit({ layout, netlist, solution });
+    quiz.setCircuit({ netlist, solution, seed: seed ?? `${Date.now()}` });
+    manual.setCircuit({ netlist, solution });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (info) info.textContent = `Error generating circuit:\n${message}\n\nTry again (or pick a different seed/difficulty).`;
+    // Don't throw: keep the UI responsive even if a generation attempt fails.
+  } finally {
+    if (newCircuitBtn instanceof HTMLButtonElement) newCircuitBtn.disabled = false;
+  }
 }
 
 newCircuitBtn?.addEventListener('click', () => renderNewCircuit());
