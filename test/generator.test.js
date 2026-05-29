@@ -41,6 +41,17 @@ test('generateCircuit is deterministic for the same seed', () => {
   assert.deepEqual(a.solution.branchCurrents, b.solution.branchCurrents);
 });
 
+test('generateCircuit returns a reproducible random seed when omitted', () => {
+  const a = generateCircuit();
+  assert.ok(a.meta.seed !== undefined && a.meta.seed !== null);
+
+  const b = generateCircuit({ seed: a.meta.seed });
+  assert.deepEqual(a.netlist.components, b.netlist.components);
+  assert.deepEqual([...a.netlist.nodes].sort(), [...b.netlist.nodes].sort());
+  assert.deepEqual(a.solution.nodeVoltages, b.solution.nodeVoltages);
+  assert.deepEqual(a.solution.branchCurrents, b.solution.branchCurrents);
+});
+
 test('generateCircuit supports difficulty=easy (linear only)', () => {
   const { netlist, solution, meta } = generateCircuit({ seed: 'diff-easy', difficulty: 'easy' });
 
