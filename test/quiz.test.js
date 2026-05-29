@@ -13,7 +13,7 @@ test('generateQuizQuestions is deterministic for the same seed and circuit', () 
 
   for (const q of a) {
     assert.ok(typeof q.id === 'string' && q.id.length > 0);
-    assert.ok(['voltage', 'current', 'resistance', 'power'].includes(q.kind));
+    assert.ok(['voltage', 'current', 'resistance', 'voltageDrop', 'power', 'inputResistance'].includes(q.kind));
     assert.ok(typeof q.prompt === 'string' && q.prompt.length > 0);
     assert.ok(Number.isFinite(q.answer));
     assert.ok(Number.isFinite(q.tolerance));
@@ -21,8 +21,10 @@ test('generateQuizQuestions is deterministic for the same seed and circuit', () 
     assert.ok(Math.abs(q.tolerance - Math.abs(q.answer) * 0.02) <= 1e-12);
 
     if (q.kind === 'voltage') assert.equal(q.unit, 'V');
+    if (q.kind === 'voltageDrop') assert.equal(q.unit, 'V');
     if (q.kind === 'current') assert.equal(q.unit, 'A');
     if (q.kind === 'resistance') assert.equal(q.unit, 'Ω');
+    if (q.kind === 'inputResistance') assert.equal(q.unit, 'Ω');
     if (q.kind === 'power') assert.equal(q.unit, 'W');
   }
 });

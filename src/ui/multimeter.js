@@ -319,10 +319,13 @@ export function createMultimeterController({
     if (state.dragging === 'red' || state.dragging === 'black') {
       const probe = state.dragging === 'red' ? state.probes.red : state.probes.black;
       snapProbe(probe);
+      overlayCanvas.releasePointerCapture(event.pointerId);
       state.dragging = null;
       state.pan = null;
-      overlayCanvas.releasePointerCapture(event.pointerId);
       return;
+    }
+    if (state.dragging === 'pan') {
+      overlayCanvas.releasePointerCapture(event.pointerId);
     }
     state.dragging = null;
     state.pan = null;
