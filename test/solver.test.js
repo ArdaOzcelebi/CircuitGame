@@ -32,3 +32,30 @@ test('solves a resistor with a current source sink to ground', () => {
   closeTo(result.branchCurrents.R1, -0.002);
   closeTo(result.branchCurrents.I1, 0.002);
 });
+
+test('solves a diode clipper DC operating point (non-linear)', () => {
+  const circuit = new Netlist({ ground: '0' })
+    .addVoltageSource('V1', 'vin', '0', 5)
+    .addResistor('R1', 'vin', 'vout', 1000)
+    .addDiode('D1', 'vout', '0');
+
+  const result = solveMNA(circuit);
+
+  assert.ok(result.nodeVoltages.vout > 0.45 && result.nodeVoltages.vout < 0.8);
+  closeTo(result.nodeVoltages.vin, 5);
+  closeTo(result.branchCurrents.R1, (5 - result.nodeVoltages.vout) / 1000, 1e-9);
+  assert.ok(result.branchCurrents.D1 > 0.001 && result.branchCurrents.D1 < 0.02);
+});
+
+test('solves an inverting ideal op-amp amplifier (linear)', () => {
+  const circuit = new Netlist({ ground: '0' })
+    .addVoltageSource('Vin', 'vin', '0', 1)
+    .addResistor('Rin', 'vin', 'nminus', 1000)
+    .addResistor('Rf', 'out', 'nminus', 10000)
+    .addIdealOpAmp('U1', '0', 'nminus', 'out', '0', { openLoopGain: 1e9 });
+
+  const result = solveMNA(circuit);
+
+  closeTo(result.nodeVoltages.nminus, 0, 1e-6);
+  closeTo(result.nodeVoltages.out, -10, 1e-3);
+});
