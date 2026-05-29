@@ -13,6 +13,18 @@ function endpoints(component) {
       return { a: component.positiveNode, b: component.negativeNode };
     case 'currentSource':
       return { a: component.fromNode, b: component.toNode };
+    case 'diode':
+      return { a: component.anodeNode, b: component.cathodeNode };
+    case 'zenerDiode':
+      return { a: component.anodeNode, b: component.cathodeNode };
+    case 'idealOpAmp':
+      return { a: component.outputNode, b: component.referenceNode };
+    case 'bjtNpn':
+    case 'bjtPnp':
+      return { a: component.collectorNode, b: component.emitterNode };
+    case 'mosfetN':
+    case 'mosfetP':
+      return { a: component.drainNode, b: component.sourceNode };
     default:
       throw new Error(`Unknown component type: ${component.type}`);
   }
@@ -106,4 +118,3 @@ export function layoutNetlist(netlist, options = {}) {
     components,
   };
 }
-
