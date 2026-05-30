@@ -285,7 +285,11 @@ export function generateCircuit(options = {}) {
   if (minLoops < 0) throw new Error('minLoops must be >= 0');
   if (maxLoops < minLoops) throw new Error('maxLoops must be >= minLoops');
 
-  const rng = makeRng(seed);
+  const sanitizedSeed = typeof seed === 'string' && seed.trim() === '' ? undefined : seed;
+  const effectiveSeed =
+    sanitizedSeed === undefined || sanitizedSeed === null ? ((Math.random() * 2 ** 32) >>> 0) : sanitizedSeed;
+
+  const rng = makeRng(effectiveSeed);
   const actualDifficulty = normalizeDifficulty(difficulty);
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
@@ -323,7 +327,7 @@ export function generateCircuit(options = {}) {
         netlist,
         solution,
         meta: {
-          seed,
+          seed: effectiveSeed,
           difficulty: actualDifficulty ?? 'legacy',
           nodeCount: netlist.nodes.size,
           componentCount: netlist.components.length,

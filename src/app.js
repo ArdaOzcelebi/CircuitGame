@@ -75,12 +75,13 @@ const quiz = createQuizController({
 const manual = createManualController({ containerEl: manualPanel });
 
 function formatMeta(meta) {
+  const hasSeed = meta.seed !== undefined && meta.seed !== null;
   return [
     `nodes: ${meta.nodeCount}`,
     `components: ${meta.componentCount}`,
     `loops: ${meta.loopCount}`,
     `difficulty: ${meta.difficulty ?? 'legacy'}`,
-    meta.seed ? `seed: ${meta.seed}` : 'seed: (random)',
+    hasSeed ? `seed: ${meta.seed}` : 'seed: (random)',
   ].join('\n');
 }
 
@@ -109,7 +110,8 @@ function renderNewCircuit() {
     overlay.height = height;
     renderer.render(netlist, solution, { width, height, layout });
     multimeter.setCircuit({ layout, netlist, solution });
-    quiz.setCircuit({ netlist, solution, seed: seed ?? `${Date.now()}` });
+    const quizSeed = meta.seed !== undefined && meta.seed !== null ? String(meta.seed) : (seed ?? `${Date.now()}`);
+    quiz.setCircuit({ netlist, solution, seed: quizSeed });
     manual.setCircuit({ netlist, solution });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
